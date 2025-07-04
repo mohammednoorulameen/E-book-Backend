@@ -7,14 +7,14 @@ import fs from "fs"
 const __filename = fileURLToPath(import.meta.url)
 // const __dirname = dirname(__filename)
 
-const serviceAccountPath = new URL(
-  "../Config/E-book Firebase Admin SDK (1).json",
-  import.meta.url,
-)
+// const serviceAccountPath = new URL(
+//   "../Config/E-book Firebase Admin SDK (1).json",
+//   import.meta.url,
+// )
 
 let firebaseApp
 try {
-  const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"))
+  const serviceAccount = JSON.parse(fs.readFileSync(process.env.FIREBASE_CREDENTIALS, "utf8"))
   firebaseApp = admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
   })
@@ -24,6 +24,38 @@ try {
 }
 
 export default firebaseApp
+
+
+
+
+
+
+// import admin from "firebase-admin"
+// import { fileURLToPath } from "url"
+// import { dirname } from "path"
+// import fs from "fs"
+// // import second from '../Config/E-book Firebase Admin SDK (1).json'
+
+// const __filename = fileURLToPath(import.meta.url)
+// // const __dirname = dirname(__filename)
+
+// const serviceAccountPath = new URL(
+//   "../Config/E-book Firebase Admin SDK (1).json",
+//   import.meta.url,
+// )
+
+// let firebaseApp
+// try {
+//   const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"))
+//   firebaseApp = admin.initializeApp({
+//     credential: admin.credential.cert(serviceAccount),
+//   })
+// } catch (error) {
+//   console.error("Error initializing Firebase Admin:", error)
+//   process.exit(1) // Exit with error code
+// }
+
+// export default firebaseApp
 
 
 
