@@ -5,10 +5,12 @@ import Otp from "../../Models/OtpModel.js";
 import sendVerificationMail from "../../Utils/mailerService.js";
 import { AccessToken, RefreshToken } from "../../Utils/Tokens.js";
 import { HashPassword } from "../../Utils/HashPassword.js";
+import { generateReferralCode } from "../../Utils/GenerateReferalCode.js";
 import { GenerateOtp } from "../../Utils/GenerateOtp.js";
 import Address from "../../Models/AddressModal.js";
 import firebaseAdmin from "../../Config/firebaseAdmin.js";
-import bcrypt from "bcrypt";
+import Wallet from '../../Models/WalletModel.js'
+import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 const maxage = 7 * 24 * 60 * 60 * 1000;
@@ -52,9 +54,9 @@ const Register = async (req, res) => {
       if (userExist.isVerified) {
         return res
           .status(400)
-          .json({ message: "User already exist and is verified" });
+          .json({ message: "User already exists and is verified" });
       } else {
-        const otp = await GenerateOtp(userExist); // otp generate again
+        const otp = await GenerateOtp(userExist); 
         console.log("Resending OTP:", otp);
         await sendVerificationMail(
           {
@@ -71,7 +73,39 @@ const Register = async (req, res) => {
         });
       }
     }
+
     const hashedPassword = await HashPassword(req.body.password);
+
+    let referredBy = null;
+    if (req.body.referralCode) {
+      const referrer = await User.findOne({ referralCode: req.body.referralCode });
+      if (!referrer) {
+        return res.status(400).json({ message: "Invalid referral code" });
+      }
+      referredBy = req.body.referralCode;
+
+      // Ensure the referrer has a wallet
+      let referrerWallet = await Wallet.findOne({ user_id: referrer._id });
+      if (!referrerWallet) {
+        referrerWallet = await Wallet.create({ user_id: referrer._id, balance_amount: 0, data: [] });
+      }
+
+      // Credit amount to referrer's wallet
+      await referrerWallet.creditAmount(100);
+
+      // Update referralRewards for the referrer
+      await User.findByIdAndUpdate(referrer._id, {
+        $push: {
+          referralRewards: {
+            referredUserId: null, // Placeholder, update after creating the new user
+            amount: 100,
+            date: new Date(),
+          },
+        },
+      });
+    }
+
+    // Create the new user
     const user = await User.create({
       username: req.body.username,
       email: req.body.email,
@@ -79,19 +113,31 @@ const Register = async (req, res) => {
       password: hashedPassword,
       isAdmin: false,
       isVerified: false,
+      referredBy,
+      referralCode: generateReferralCode(req.body.username),
     });
+
     const userData = await user.save();
     if (!userData) {
-      return res.status(404).json({ message: "user registration failed" });
+      return res.status(404).json({ message: "User registration failed" });
     }
-    const otp = await GenerateOtp(user); // generate otp
-    console.log("otp:", otp);
 
-    res.status(200).json({
-      message: "Successfully Registration, OTP Send Successfully",
-      userId: userData._id,
-    });
+    // Update referrer's referralRewards with the actual referred user's ID
+    if (referredBy) {
+      const referrer = await User.findOne({ referralCode: referredBy });
+      await User.findByIdAndUpdate(referrer._id, {
+        $push: {
+          referralRewards: {
+            referredUserId: userData._id,
+            amount: 100,
+            date: new Date(),
+          },
+        },
+      });
+    }
 
+    const otp = await GenerateOtp(user);
+    console.log("OTP:", otp);
     await sendVerificationMail(
       {
         email: user.email,
@@ -100,12 +146,98 @@ const Register = async (req, res) => {
       },
       otp
     );
-  } catch (error) {
-    console.log("error register", error);
 
-    res.status(500).json({ message: "Server Error,OTP Send Failed" });
+    // Create wallet for the new user
+    await Wallet.create({
+      user_id: user._id,
+      balance_amount: 1, 
+      data: [
+        {
+          order_id: null,
+          items: "Welcome Bonus",
+          amount: 1,
+          date: new Date(),
+        },
+      ],
+    });
+
+    res.status(200).json({
+      message: "Successfully registered. OTP sent successfully.",
+      userId: userData._id,
+    });
+  } catch (error) {
+    console.log("Error in register:", error);
+    res.status(500).json({ message: "Server Error, OTP send failed" });
   }
 };
+
+
+
+
+
+// const Register = async (req, res) => {
+//   console.log(req.body);
+
+//   try {
+//     const userExist = await User.findOne({ email: req.body.email });
+//     if (userExist) {
+//       if (userExist.isVerified) {
+//         return res
+//           .status(400)
+//           .json({ message: "User already exist and is verified" });
+//       } else {
+//         const otp = await GenerateOtp(userExist); // otp generate again
+//         console.log("Resending OTP:", otp);
+//         await sendVerificationMail(
+//           {
+//             email: userExist.email,
+//             username: userExist.username,
+//             phone: userExist.phone,
+//           },
+//           otp
+//         );
+//         return res.status(200).json({
+//           message:
+//             "User already exists but is not verified. OTP resent successfully.",
+//           userId: userExist._id,
+//         });
+//       }
+//     }
+//     const hashedPassword = await HashPassword(req.body.password);
+//     const user = await User.create({
+//       username: req.body.username,
+//       email: req.body.email,
+//       phone: req.body.phone,
+//       password: hashedPassword,
+//       isAdmin: false,
+//       isVerified: false,
+//     });
+//     const userData = await user.save();
+//     if (!userData) {
+//       return res.status(404).json({ message: "user registration failed" });
+//     }
+//     const otp = await GenerateOtp(user); // generate otp
+//     console.log("otp:", otp);
+
+//     res.status(200).json({
+//       message: "Successfully Registration, OTP Send Successfully",
+//       userId: userData._id,
+//     });
+
+//     await sendVerificationMail(
+//       {
+//         email: user.email,
+//         username: user.username,
+//         phone: user.phone,
+//       },
+//       otp
+//     );
+//   } catch (error) {
+//     console.log("error register", error);
+
+//     res.status(500).json({ message: "Server Error,OTP Send Failed" });
+//   }
+// };
 
 /*
 verify user otp

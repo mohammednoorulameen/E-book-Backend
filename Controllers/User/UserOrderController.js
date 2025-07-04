@@ -10,7 +10,7 @@ import crypto from "crypto";
 /**
  * getting offer
  */
-
+ 
 const getOffer = async (product_id) => {
   try {
     const product = await Products.findById(product_id);
@@ -52,6 +52,10 @@ const getOffer = async (product_id) => {
 const PlaceOrder = async (req, res) => {
   const { cartSave, address_id, paymentMethod, totalPrice, couponDiscount } =
     req.body;
+
+    
+    console.log('address_id', address_id)
+
   const user_id = req.userId;
   const discountApplied = couponDiscount / cartSave.length;
   const totalAmount = Math.round(totalPrice);
@@ -92,6 +96,7 @@ const PlaceOrder = async (req, res) => {
       );
 
       if (order) {
+        order.address_id = address_id;
         order.items.push(...OrderItemsWithOffers);
         await order.save();
         console.log("Updated Order:", order);
@@ -213,6 +218,7 @@ const VerifyPayment = async (req, res) => {
     );
 
     if (order) {
+      order.address_id = address_id;
       order.items.push(...itemsWithOffers);
       await order.save();
     } else {
@@ -515,7 +521,7 @@ const getOrders = async (req, res) => {
   try {
     const user_id = new mongoose.Types.ObjectId(req?.userId);
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 9;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
     const orderitems = [
@@ -582,7 +588,7 @@ const CancelOrder = async (req, res) => {
   try {
     const user_id = req.userId;
     const { product_id, quantity, order_id } = req.body;
-    // console.log('product_id, quantity, order_id', product_id, quantity, order_id)
+    console.log('product_id, quantity, order_id', product_id, quantity, order_id)
     const order = await Orders.findOneAndUpdate(
       { user_id: user_id, _id: order_id, "items.product_id": product_id },
       { $set: { "items.$.orderStatus": "Cancelled" } },
@@ -702,6 +708,44 @@ const TopCategory = async (req, res) => {
 
 
 
+
+
+const ReturnOrder = async (req, res) => {
+  try {
+
+    console.log("fm;isdhvluifhfipuhnerlifbefilbleafinerlifbnerl;ifninjf ikrn")
+    const { ReturnReason, product_id, order_id, quantity } = req.body;
+
+    console.log('product_id, quantity, order_id, ReturnReason', product_id, quantity, order_id, ReturnReason);
+    const order = await Order.findById(order_id);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    const itemIndex = order.items.findIndex(item => item.product_id.toString() === product_id);
+    if (itemIndex === -1) {
+      return res.status(404).json({ message: 'Product not found in the order' });
+    }
+
+    order.items[itemIndex].returnStatus = 'Returned';  
+    order.items[itemIndex].returnReason = ReturnReason;  
+
+
+    const product = await Product.findById(product_id);
+    if (product) {
+
+      await product.save();
+    }
+
+    await order.save();
+
+    res.status(200).json({ message: 'Order returned successfully', order });
+  } catch (error) {
+    console.error("Error during order return:", error);
+    res.status(500).json({ message: 'Something went wrong while returning the order' });
+  }
+};
+
+
 export {
   PlaceOrder,
   getOrders,
@@ -712,5 +756,5 @@ export {
   verifyRetry,
   GetTopTenProducts,
   TopCategory,
-  
+  ReturnOrder
 };

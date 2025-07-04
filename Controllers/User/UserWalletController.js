@@ -6,86 +6,86 @@ import Wallet from "../../Models/WalletModel.js";
  */
 
 
-const addWallet = async (req,res)=>{
-    try {
-        const user_id = req.userId;
-        const {amount,productName,order_id,payment_id} = req.body;
-        console.log("check this ", amount, productName, order_id, payment_id);
-        
-        if (payment_id) {
-            const user = await Wallet.findOne({user_id:user_id})
-            if (user) {
-                user.data.push({
-                    order_id:order_id,
-                    item:productName,
-                    amount:amount,
-                    date: Date.now()
-                })
-                await user.save()
-            }else{
-                const user = await Wallet.create({
-                    user_id:user_id,
-                    balance_amount:amount,
-                    data:[{
-                        order_id:order_id,
-                        item:productName,
-                        amount:amount,
-                        date: Date.now()
-                    }]
-                }) 
-            }
-        }
-        await res.status(200).json({ message: "wallet add successfully "})
-    } catch (error) {
-        await res.status(401).json({ message: "wallet add failed "})
-    }
-}
-
-// const addWallet = async (req, res) => {
+// const addWallet = async (req,res)=>{
 //     try {
 //         const user_id = req.userId;
-//         const { amount, productName, order_id, payment_id } = req.body;
-
-//         // Validate request data
-//         if (!amount || !productName || !order_id || !payment_id) {
-//             return res.status(400).json({ message: "Missing required fields" });
-//         }
-
-//         // Check if payment_id exists
+//         const {amount,productName,order_id,payment_id} = req.body;
+//         console.log("check this ", amount, productName, order_id, payment_id);
+        
 //         if (payment_id) {
-//             const user = await Wallet.findOne({ user_id: user_id });
+//             const user = await Wallet.findOne({user_id:user_id})
 //             if (user) {
-//                 // Update existing wallet
 //                 user.data.push({
-//                     order_id: order_id,
-//                     item: productName,
-//                     amount: amount,
+//                     order_id:order_id,
+//                     item:productName,
+//                     amount:amount,
 //                     date: Date.now()
-//                 });
-//                 await user.save();
-//             } else {
-//                 // Create new wallet
-//                 await Wallet.create({
-//                     user_id: user_id,
-//                     balance_amount: amount,
-//                     data: [{
-//                         order_id: order_id,
-//                         item: productName,
-//                         amount: amount,
+//                 })
+//                 await user.save()
+//             }else{
+//                 const user = await Wallet.create({
+//                     user_id:user_id,
+//                     balance_amount:amount,
+//                     data:[{
+//                         order_id:order_id,
+//                         item:productName,
+//                         amount:amount,
 //                         date: Date.now()
 //                     }]
-//                 });
+//                 }) 
 //             }
-//             return res.status(200).json({ message: "Wallet added successfully" });
-//         } else {
-//             return res.status(400).json({ message: "Payment ID is required" });
 //         }
+//         await res.status(200).json({ message: "wallet add successfully "})
 //     } catch (error) {
-//         console.error(error); // Log the error for debugging
-//         return res.status(500).json({ message: "Wallet addition failed" });
+//         await res.status(401).json({ message: "wallet add failed "})
 //     }
-// };
+// }
 
+
+
+const addWallet = async (req, res) => {
+    try {
+        const user_id = req.userId;
+        const { amount, productName, order_id, payment_id } = req.body;
+        if (!payment_id) {
+            return res.status(400).json({ message: "Payment ID is required" });
+        }
+        const user = await Wallet.findOne({ user_id: user_id });
+
+        if (user) {
+            const existingTransaction = user.data.find(txn => txn.order_id === order_id);
+            if (existingTransaction) {
+                return res.status(400).json({ message: "Transaction already exists" });
+            }
+            user.data.push({
+                order_id: order_id,
+                item: productName, 
+                amount: amount,
+                date: Date.now(),
+            });
+            user.balance_amount += amount;
+            await user.save();
+        } else {
+            await Wallet.create({
+                user_id: user_id,
+                balance_amount: amount,
+                data: [
+                    {
+                        order_id: order_id,
+                        item: productName,
+                        amount: amount,
+                        date: Date.now(),
+                    },
+                ],
+            });
+        }
+
+        res.status(200).json({ message: "Wallet updated successfully" });
+    } catch (error) {
+        console.error("Error in addWallet:", error);
+        res.status(500).json({ message: "Failed to update wallet", error: error.message });
+    }
+};
 
 
 /**

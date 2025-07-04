@@ -42,7 +42,31 @@ const userSchema = mongoose.Schema({
     otpExpireAt : {
         type : Date
     },
-     role: {type: String, enum: [ 'user', 'admin'],default:'user'}
+    referralCode: {
+        type: String,
+        unique: true,
+      },
+      referredBy: {
+        type: String,
+      },
+
+      referralRewards: [
+        {
+          reward: Number,
+          status: {
+            type: String,
+            enum: ["Pending", "Completed"],
+            default: "Pending",
+          },
+          createdAt: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+
+     role: {type: String, enum: [ 'user', 'admin'],default:'user'},
+     
 },
 {timestamps : true})
 

@@ -1,7 +1,7 @@
 /*======================================== ADMIN AUTHENTICATION CONTROLLER ======================================== */
 
 import User from "../../Models/userModel.js";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { AccessToken, RefreshToken } from "../../Utils/Tokens.js";
 const maxage = 7 * 24 * 60 * 60 * 1000;
 import mongoose from "mongoose";

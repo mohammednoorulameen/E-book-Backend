@@ -31,11 +31,11 @@ const orderSchema = mongoose.Schema(
           type: Number,
           required: true,
         },
-
+ 
         orderStatus: {
           type: String,
           required: true,
-          enum: ["Pending", "Shipped", "Delivered", "Cancelled"],
+          enum: ["Pending", "Shipped", "Delivered", "Cancelled","Returned"],
           default: "Pending",
         },
 
