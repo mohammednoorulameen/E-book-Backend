@@ -23,7 +23,7 @@ app.use('/images',express.static(path.join(__dirname,'Public','images')));
 app.use(express.json())
 const corsOption = {
   // origin: "http://localhost:5173",
-  origin: "https://ebooks.noorulameen.tech",
+  origin: ["https://ebooks.noorulameen.tech"],
   credentials: true,  
 };
 
